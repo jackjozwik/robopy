@@ -42,5 +42,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:\\Users\\jozwikch\\Documents\\Python Scripts\\robopy\\robopy_icon.ico'],
+    icon=['robopy_icon.ico'],
 )

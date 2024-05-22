@@ -16,7 +16,7 @@ class BackupTool(TkinterDnD.Tk):
         self.geometry("600x700")
 
         # Set the icon for the application
-        self.iconbitmap(r'./robopy_icon.ico')
+        
 
         self.robocopy_process = None
         self.exported = False
