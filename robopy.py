@@ -1,3 +1,4 @@
+import math
 import os
 import tkinter as tk
 import subprocess
@@ -7,7 +8,7 @@ from tkinter import filedialog
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from tkinter import messagebox, filedialog, ttk
 import queue
-
+import time
 
 
 class BackupTool(TkinterDnD.Tk):
@@ -18,9 +19,9 @@ class BackupTool(TkinterDnD.Tk):
 
         #Do NOT Set the icon for the application
 
+        self.start_time = None
         self.robocopy_process = None
         self.exported = False
-        self.log_queue = queue.Queue()
         
         # Source path frame
         source_frame = ttk.LabelFrame(self, text="Source Path")
@@ -94,6 +95,10 @@ class BackupTool(TkinterDnD.Tk):
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+        # Queue to hold log messages
+        self.log_queue = queue.Queue()
+        self.after(100, self.process_log_queue)
+
 
         
 
@@ -141,6 +146,8 @@ class BackupTool(TkinterDnD.Tk):
 
 
     def run_backup(self):
+        self.start_time = time.time()
+
         mt = self.mt_var.get()
         v = '/V' if self.v_var.get() else ''
         z = '/Z' if self.z_var.get() else ''
@@ -150,7 +157,7 @@ class BackupTool(TkinterDnD.Tk):
         log_dir = tempfile.gettempdir()
         log_path = os.path.join(log_dir, 'robocopy_log.txt')
         command = f'robocopy "{self.source_path}" "{self.destination_path}" /MT:{mt} {v} {z} {e} /R:{r} /W:{w} /TEE /LOG:"{log_path}"'
-        self.log(f"Executing: {command}")
+        self.log_queue.put(f"Executing: {command}")
         try:
             self.cancel_button.config(state='normal')
             self.robocopy_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -159,27 +166,33 @@ class BackupTool(TkinterDnD.Tk):
             while self.robocopy_process and self.robocopy_process.poll() is None:
                 line = self.robocopy_process.stdout.readline()
                 if line:
-                    self.log(line.strip())
+                    self.log_queue.put(line.strip())
 
             # Ensure all remaining output is read
             if self.robocopy_process:
                 for line in self.robocopy_process.stdout:
-                    self.log(line.strip())
+                    self.log_queue.put(line.strip())
 
                 self.robocopy_process.wait()
                 if self.robocopy_process.returncode == 1:
-                    self.log(f"Backup from {self.source_path} to {self.destination_path} completed!\n")
+                    end_time = time.time()
+                    total_time = end_time - self.start_time
+
+                    hours, remainder = divmod(total_time, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+
+                    self.log_queue.put(f"Backup from {self.source_path} to {self.destination_path} completed!\n")
+                    self.log_queue.put(f"Total time to copy: {int(hours)}h {int(minutes)}m {int(seconds)}s\n")
                 else:
-                    self.log(f"Robocopy exited with code {self.robocopy_process.returncode}")
+                    self.log_queue.put(f"Robocopy exited with code {self.robocopy_process.returncode}")
 
             self.verify_backup()  # Call verification after backup
 
         except Exception as e:
-            self.log(f"Error: {str(e)}")
+            self.log_queue.put(f"Error: {str(e)}")
         finally:
             self.cancel_button.config(state='disabled')
             self.robocopy_process = None
-
             self.export_log_button.config(state='normal')
 
 
@@ -193,18 +206,34 @@ class BackupTool(TkinterDnD.Tk):
                 file_count += 1
         return total_size, file_count
 
+
+    def convert_size(self, size_bytes):
+        if size_bytes == 0:
+            return "0B"
+        size_name = ("B", "KB", "MB", "GB", "TB")
+        i = int(math.floor(math.log(size_bytes, 1024)))
+        p = math.pow(1024, i)
+        s = round(size_bytes / p, 2)
+        return f"{s} {size_name[i]}"
+
+
     def verify_backup(self):
         if self.source_path and self.destination_path:
             source_size, source_count = self.get_directory_size_and_count(self.source_path)
             dest_size, dest_count = self.get_directory_size_and_count(self.destination_path)
-            self.log(f"Source - Size: {source_size} bytes, Files: {source_count}")
-            self.log(f"Destination - Size: {dest_size} bytes, Files: {dest_count}")
+
+            source_size_readable = self.convert_size(source_size)
+            dest_size_readable = self.convert_size(dest_size)
+
+            self.log_queue.put(f"Source - Size: {source_size_readable} bytes, Files: {source_count}")
+            self.log_queue.put(f"Destination - Size: {dest_size_readable} bytes, Files: {dest_count}")
+
             if source_size == dest_size and source_count == dest_count:
-                self.log("Verification successful: Source and destination directories match.")
+                self.log_queue.put("Verification successful: Source and destination directories match.")
             else:
-                self.log("Verification failed: Source and destination directories do not match.")
-                self.log(f"Source - Size: {source_size} bytes, Files: {source_count}")
-                self.log(f"Destination - Size: {dest_size} bytes, Files: {dest_count}")
+                self.log_queue.put("Verification failed: Source and destination directories do not match.")
+                self.log_queue.put(f"Source - Size: {source_size_readable} bytes, Files: {source_count}")
+                self.log_queue.put(f"Destination - Size: {dest_size_readable} bytes, Files: {dest_count}")
         else:
             messagebox.showwarning("Warning", "Please select both source and destination directories.")
 
@@ -213,7 +242,7 @@ class BackupTool(TkinterDnD.Tk):
         if self.robocopy_process:
             self.robocopy_process.terminate()
             self.robocopy_process = None  # Ensure this is set to None
-            self.log("Backup process terminated by user.")
+            self.log_queue.put("Backup cancelled.\n")
             self.cancel_button.config(state='disabled')
 
 
@@ -222,6 +251,13 @@ class BackupTool(TkinterDnD.Tk):
         self.log_text.insert('end', message + '\n')
         self.log_text.config(state='disabled')
         self.log_text.see('end')  # Scroll to the end
+
+
+    def process_log_queue(self):
+        while not self.log_queue.empty():
+            message = self.log_queue.get()
+            self.log(message)
+        self.after(250, self.process_log_queue)
 
 
     def export_log(self):
