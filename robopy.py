@@ -75,7 +75,7 @@ class BackupTool(TkinterDnD.Tk):
 
         tk.Label(options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
         tk.Spinbox(options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
-
+        
         buttons_frame = tk.Frame(top_frame)
         buttons_frame.pack(pady=20, padx=10, fill='x', expand=True)
 
@@ -86,23 +86,22 @@ class BackupTool(TkinterDnD.Tk):
         self.cancel_button.pack(side="left", padx=10, fill='x', expand=True)
 
         self.export_log_button = tk.Button(buttons_frame, text="Export Log", command=self.export_log, state='disabled')
-        self.export_log_button.pack(side="bottom", pady=10, padx=10, fill='x', expand=True)
+        self.export_log_button.pack(side="right", padx=10, fill='x', expand=True)
 
         self.source_path = ""
         self.destination_path = ""
 
         # Log frame
         self.log_frame = ttk.LabelFrame(paned_window, text="Log")
-        self.log_frame.pack(pady=10, padx=10, fill="x")
         paned_window.add(self.log_frame)
 
         self.log_text_frame = ttk.Frame(self.log_frame)
-        self.log_text_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.log_text_frame.pack(fill="both", expand=True)
 
         self.log_text = tk.Text(self.log_text_frame, state='disabled', height=10, wrap='word')
-        self.log_text.pack(fill="both", expand=True, padx=10, pady=10)
+        self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.sizegrip = ttk.Sizegrip(self.log_text_frame)
+        self.sizegrip = ttk.Sizegrip(self.log_frame)
         self.sizegrip.pack(side="right", anchor="se")
 
 
