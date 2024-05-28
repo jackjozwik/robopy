@@ -6,6 +6,7 @@ import threading
 from tkinter import filedialog
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from tkinter import messagebox, filedialog, ttk
+import queue
 
 
 
@@ -15,11 +16,11 @@ class BackupTool(TkinterDnD.Tk):
         self.title("RoboPy")
         self.geometry("600x700")
 
-        # Set the icon for the application
-        
+        #Do NOT Set the icon for the application
 
         self.robocopy_process = None
         self.exported = False
+        self.log_queue = queue.Queue()
         
         # Source path frame
         source_frame = ttk.LabelFrame(self, text="Source Path")
