@@ -85,18 +85,26 @@ class BackupTool(TkinterDnD.Tk):
         self.cancel_button = tk.Button(buttons_frame, text="Cancel", command=self.cancel_backup, state='disabled')
         self.cancel_button.pack(side="left", padx=10, fill='x', expand=True)
 
+        self.export_log_button = tk.Button(buttons_frame, text="Export Log", command=self.export_log, state='disabled')
+        self.export_log_button.pack(side="bottom", pady=10, padx=10, fill='x', expand=True)
+
         self.source_path = ""
         self.destination_path = ""
 
         # Log frame
         self.log_frame = ttk.LabelFrame(paned_window, text="Log")
+        self.log_frame.pack(pady=10, padx=10, fill="x")
         paned_window.add(self.log_frame)
 
-        self.log_text = tk.Text(self.log_frame, state='disabled', height=10)
+        self.log_text_frame = ttk.Frame(self.log_frame)
+        self.log_text_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        self.log_text = tk.Text(self.log_text_frame, state='disabled', height=10, wrap='word')
         self.log_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.export_log_button = tk.Button(self.log_frame, text="Export Log", command=self.export_log, state='disabled')
-        self.export_log_button.pack(pady=10, padx=10, fill='x', expand=True)
+        self.sizegrip = ttk.Sizegrip(self.log_text_frame)
+        self.sizegrip.pack(side="right", anchor="se")
+
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
