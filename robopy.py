@@ -4,7 +4,7 @@ import tkinter as tk
 import subprocess
 import tempfile
 import threading
-from tkinter import filedialog
+from tkinter import Scrollbar, filedialog
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from tkinter import messagebox, filedialog, ttk
 import queue
@@ -21,6 +21,9 @@ class BackupTool(TkinterDnD.Tk):
         self.start_time = None
         self.robocopy_process = None
         self.exported = False
+
+        self.source_path = ""
+        self.destination_path = ""
 
         # Create a PanedWindow
         paned_window = tk.PanedWindow(self, orient="vertical")
@@ -75,7 +78,7 @@ class BackupTool(TkinterDnD.Tk):
 
         tk.Label(options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
         tk.Spinbox(options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
-        
+
         buttons_frame = tk.Frame(top_frame)
         buttons_frame.pack(pady=20, padx=10, fill='x', expand=True)
 
@@ -86,20 +89,23 @@ class BackupTool(TkinterDnD.Tk):
         self.cancel_button.pack(side="left", padx=10, fill='x', expand=True)
 
         self.export_log_button = tk.Button(buttons_frame, text="Export Log", command=self.export_log, state='disabled')
-        self.export_log_button.pack(side="right", padx=10, fill='x', expand=True)
-
-        self.source_path = ""
-        self.destination_path = ""
+        self.export_log_button.pack(side="left", padx=10, fill='x', expand=True)
 
         # Log frame
         self.log_frame = ttk.LabelFrame(paned_window, text="Log")
+        self.log_frame.pack(pady=10, padx=10, fill="x")
         paned_window.add(self.log_frame)
 
         self.log_text_frame = ttk.Frame(self.log_frame)
-        self.log_text_frame.pack(fill="both", expand=True)
+        self.log_text_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        self.log_text = tk.Text(self.log_text_frame, state='disabled', height=10, wrap='word')
+        y=Scrollbar(self.log_text_frame, orient='vertical')
+        y.pack(side="right", fill='y')
+
+        self.log_text = tk.Text(self.log_text_frame, state='disabled', height=10, wrap='word', yscrollcommand=y.set)
         self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
+
+        y.config(command=self.log_text.yview)
 
         self.sizegrip = ttk.Sizegrip(self.log_frame)
         self.sizegrip.pack(side="right", anchor="se")
@@ -109,7 +115,7 @@ class BackupTool(TkinterDnD.Tk):
 
         # Queue to hold log messages
         self.log_queue = queue.Queue()
-        self.after(100, self.process_log_queue)
+        self.after(50, self.process_log_queue)
 
         
 
@@ -268,7 +274,7 @@ class BackupTool(TkinterDnD.Tk):
         while not self.log_queue.empty():
             message = self.log_queue.get()
             self.log(message)
-        self.after(250, self.process_log_queue)
+        self.after(50, self.process_log_queue)
 
 
     def export_log(self):
