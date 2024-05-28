@@ -84,11 +84,9 @@ class BackupTool(TkinterDnD.Tk):
         self.source_path = ""
         self.destination_path = ""
 
-        self.log_frame = ttk.LabelFrame(self, text="Log")
-        self.log_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.log_text = tk.Text(self.log_frame, state='disabled', height=10)
-        self.log_text.pack(fill="both", expand=True, padx=10, pady=10)
+        self.create_log_window()
+
 
         self.export_log_button = tk.Button(self, text="Export Log", command=self.export_log, state='disabled')
         self.export_log_button.pack(pady=10, padx=10, fill='x', expand=True)
@@ -100,7 +98,27 @@ class BackupTool(TkinterDnD.Tk):
         self.after(100, self.process_log_queue)
 
 
+    def create_log_window(self):
+        self.log_frame = ttk.LabelFrame(self, text="Log")
+        self.log_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
+        # Creating a frame to hold the Text widget and configure it to stop propagating size
+        self.log_text_container = ttk.Frame(self.log_frame)
+        self.log_text_container.pack(fill="both", expand=True, padx=10, pady=10)
+        self.log_text_container.pack_propagate(False)
+        
+        # Adding the Text widget inside the container frame
+        self.log_text = tk.Text(self.log_text_container, state='disabled')
+        self.log_text.pack(fill="both", expand=True)
+        
+        # Adding a Sizegrip to make the window resizable
+        self.sizegrip = ttk.Sizegrip(self.log_frame)
+        self.sizegrip.pack(side="bottom", anchor="se")
+        
+        # Make the window resizable
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
 
     def browse_source(self):
         path = filedialog.askdirectory()
