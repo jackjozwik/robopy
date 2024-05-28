@@ -18,13 +18,20 @@ class BackupTool(TkinterDnD.Tk):
         self.geometry("600x700")
 
         #Do NOT Set the icon for the application
-
         self.start_time = None
         self.robocopy_process = None
         self.exported = False
-        
+
+        # Create a PanedWindow
+        paned_window = tk.PanedWindow(self, orient="vertical")
+        paned_window.pack(fill="both", expand=True)
+
+        # Create a frame for the top section
+        top_frame = tk.Frame(paned_window)
+        paned_window.add(top_frame)
+
         # Source path frame
-        source_frame = ttk.LabelFrame(self, text="Source Path")
+        source_frame = ttk.LabelFrame(top_frame, text="Source Path")
         source_frame.pack(pady=10, padx=10, fill="x")
         self.source_label = tk.Label(source_frame, text="Drag Source Directory Here", relief="solid", height=2)
         self.source_label.pack(side="left", fill='x', expand=True, padx=10, pady=5)
@@ -34,7 +41,7 @@ class BackupTool(TkinterDnD.Tk):
         self.source_label.dnd_bind('<<Drop>>', self.on_source_drop)
 
         # Destination path frame
-        destination_frame = ttk.LabelFrame(self, text="Destination Path")
+        destination_frame = ttk.LabelFrame(top_frame, text="Destination Path")
         destination_frame.pack(pady=10, padx=10, fill="x")
         self.destination_label = tk.Label(destination_frame, text="Drag Destination Directory Here", relief="solid", height=2)
         self.destination_label.pack(side="left", fill='x', expand=True, padx=10, pady=5)
@@ -44,7 +51,7 @@ class BackupTool(TkinterDnD.Tk):
         self.destination_label.dnd_bind('<<Drop>>', self.on_destination_drop)
 
         # Options frame
-        options_frame = ttk.LabelFrame(self, text="Options")
+        options_frame = ttk.LabelFrame(top_frame, text="Options")
         options_frame.pack(pady=10, padx=10, fill="x")
 
         # Multithread input
@@ -58,7 +65,7 @@ class BackupTool(TkinterDnD.Tk):
         self.e_var = tk.BooleanVar(value=True)
         self.r_var = tk.IntVar(value=5)
         self.w_var = tk.IntVar(value=3)
-        
+
         tk.Checkbutton(options_frame, text="Verbose (V)", variable=self.v_var).grid(row=1, column=0, padx=10, pady=5, sticky='w')
         tk.Checkbutton(options_frame, text="Restartable (Z)", variable=self.z_var).grid(row=1, column=1, padx=10, pady=5, sticky='w')
         tk.Checkbutton(options_frame, text="Sub-directories (E)", variable=self.e_var).grid(row=1, column=2, padx=10, pady=5, sticky='w')
@@ -69,10 +76,7 @@ class BackupTool(TkinterDnD.Tk):
         tk.Label(options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
         tk.Spinbox(options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
 
-        buttons_frame = tk.Frame(self)
-        buttons_frame.pack(pady=20, padx=10, fill='x', expand=True)
-
-        buttons_frame = tk.Frame(self)
+        buttons_frame = tk.Frame(top_frame)
         buttons_frame.pack(pady=20, padx=10, fill='x', expand=True)
 
         self.backup_button = tk.Button(buttons_frame, text="Start Backup", command=self.backup)
@@ -84,11 +88,14 @@ class BackupTool(TkinterDnD.Tk):
         self.source_path = ""
         self.destination_path = ""
 
+        # Log frame
+        self.log_frame = ttk.LabelFrame(paned_window, text="Log")
+        paned_window.add(self.log_frame)
 
-        self.create_log_window()
+        self.log_text = tk.Text(self.log_frame, state='disabled', height=10)
+        self.log_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-
-        self.export_log_button = tk.Button(self, text="Export Log", command=self.export_log, state='disabled')
+        self.export_log_button = tk.Button(self.log_frame, text="Export Log", command=self.export_log, state='disabled')
         self.export_log_button.pack(pady=10, padx=10, fill='x', expand=True)
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -97,28 +104,7 @@ class BackupTool(TkinterDnD.Tk):
         self.log_queue = queue.Queue()
         self.after(100, self.process_log_queue)
 
-
-    def create_log_window(self):
-        self.log_frame = ttk.LabelFrame(self, text="Log")
-        self.log_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
-        # Creating a frame to hold the Text widget and configure it to stop propagating size
-        self.log_text_container = ttk.Frame(self.log_frame)
-        self.log_text_container.pack(fill="both", expand=True, padx=10, pady=10)
-        self.log_text_container.pack_propagate(False)
-        
-        # Adding the Text widget inside the container frame
-        self.log_text = tk.Text(self.log_text_container, state='disabled')
-        self.log_text.pack(fill="both", expand=True)
-        
-        # Adding a Sizegrip to make the window resizable
-        self.sizegrip = ttk.Sizegrip(self.log_frame)
-        self.sizegrip.pack(side="bottom", anchor="se")
-        
-        # Make the window resizable
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-
 
     def browse_source(self):
         path = filedialog.askdirectory()
