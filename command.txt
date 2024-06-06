@@ -1,1 +1,1 @@
-pyinstaller -F --name RoboPy --onefile --windowed --collect-all TkinterDnD2 --icon=robopy_icon.ico -w robopy.py --additional-hooks-dir=.
+pyinstaller --clean -F --name RoboPy --onefile --windowed --collect-all TkinterDnD2 --icon=robopy_icon.ico -w robopy.py --additional-hooks-dir=.

@@ -79,6 +79,13 @@ class BackupTool(TkinterDnD.Tk):
         tk.Label(options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
         tk.Spinbox(options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
 
+        # Exclude directories
+        tk.Label(options_frame, text="Exclude Directories").grid(row=3, column=0, padx=10, pady=5, sticky='w')
+        self.exclude_var = tk.StringVar(value="")
+        self.exclude_entry = tk.Entry(options_frame, textvariable=self.exclude_var, width=40)
+        self.exclude_entry.grid(row=3, column=1, columnspan=3, padx=10, pady=5, sticky='w')
+
+        # Buttons frame
         buttons_frame = tk.Frame(top_frame)
         buttons_frame.pack(pady=20, padx=10, fill='x', expand=True)
 
@@ -171,11 +178,19 @@ class BackupTool(TkinterDnD.Tk):
         e = '/E' if self.e_var.get() else ''
         r = self.r_var.get()
         w = self.w_var.get()
+
+        exclude_dirs = self.exclude_var.get().split(',')
+        exclude_params = ' '.join([f'/XD "{d.strip()}"' for d in exclude_dirs if d.strip()])
+
         log_dir = tempfile.gettempdir()
         log_path = os.path.join(log_dir, 'robocopy_log.txt')
-        command = f'robocopy "{self.source_path}" "{self.destination_path}" /MT:{mt} {v} {z} {e} /R:{r} /W:{w} /TEE /LOG:"{log_path}"'
+        command = f'robocopy "{self.source_path}" "{self.destination_path}" /MT:{mt} {exclude_params} {v} {z} {e} /R:{r} /W:{w} /TEE /LOG:"{log_path}"'
+
+        self.log_queue.put(f"Starting backup from {self.source_path} to {self.destination_path}\n")
         self.log_queue.put(f"Executing: {command}")
+
         try:
+            self.backup_button.config(state='disabled')
             self.cancel_button.config(state='normal')
             self.robocopy_process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
@@ -208,9 +223,10 @@ class BackupTool(TkinterDnD.Tk):
         except Exception as e:
             self.log_queue.put(f"Error: {str(e)}")
         finally:
+            self.backup_button.config(state='normal')
             self.cancel_button.config(state='disabled')
-            self.robocopy_process = None
             self.export_log_button.config(state='normal')
+            self.robocopy_process = None
 
 
     def get_directory_size_and_count(self, directory):
@@ -249,8 +265,6 @@ class BackupTool(TkinterDnD.Tk):
                 self.log_queue.put("Verification successful: Source and destination directories match.")
             else:
                 self.log_queue.put("Verification failed: Source and destination directories do not match.")
-                self.log_queue.put(f"Source - Size: {source_size_readable} bytes, Files: {source_count}")
-                self.log_queue.put(f"Destination - Size: {dest_size_readable} bytes, Files: {dest_count}")
         else:
             messagebox.showwarning("Warning", "Please select both source and destination directories.")
 
@@ -261,6 +275,7 @@ class BackupTool(TkinterDnD.Tk):
             self.robocopy_process = None  # Ensure this is set to None
             self.log_queue.put("Backup cancelled.\n")
             self.cancel_button.config(state='disabled')
+            self.export_log_button.config(state='normal')
 
 
     def log(self, message):
