@@ -26,53 +26,54 @@ class BackupTool(TkinterDnD.Tk):
         self.destination_path = ""
         self.exclude_var = tk.StringVar(value="")
 
-
-        # Create a PanedWindow
-        paned_window = tk.PanedWindow(self, orient="vertical")
-        paned_window.pack(fill="both", expand=True)
-
-        # Create a frame for the top section
-        top_frame = tk.Frame(paned_window)
-        paned_window.add(top_frame)
+        # Create a main frame to hold everything
+        main_frame = tk.Frame(self)
+        main_frame.pack(fill="both", expand=True)
 
         # Source path frame
-        source_frame = ttk.LabelFrame(top_frame, text="Source Path")
+        source_frame = ttk.LabelFrame(main_frame, text="Source Path")
         source_frame.pack(pady=10, padx=10, fill="x")
         self.source_label = tk.Label(source_frame, text="Drag Source Directory Here", relief="solid", height=2)
         self.source_label.pack(side="left", fill='x', expand=True, padx=10, pady=5)
-        self.source_browse_button = tk.Button(source_frame, text="Browse", command=self.browse_source)
-        self.source_browse_button.pack(side="right", padx=10, pady=5)
+        source_browse_button = tk.Button(source_frame, text="Browse", command=self.browse_source)
+        source_browse_button.pack(side="right", padx=10, pady=5)
         self.source_label.drop_target_register(DND_FILES)
         self.source_label.dnd_bind('<<Drop>>', self.on_source_drop)
 
         # Destination path frame
-        destination_frame = ttk.LabelFrame(top_frame, text="Destination Path")
+        destination_frame = ttk.LabelFrame(main_frame, text="Destination Path")
         destination_frame.pack(pady=10, padx=10, fill="x")
         self.destination_label = tk.Label(destination_frame, text="Drag Destination Directory Here", relief="solid", height=2)
         self.destination_label.pack(side="left", fill='x', expand=True, padx=10, pady=5)
-        self.destination_browse_button = tk.Button(destination_frame, text="Browse", command=self.browse_destination)
-        self.destination_browse_button.pack(side="right", padx=10, pady=5)
+        destination_browse_button = tk.Button(destination_frame, text="Browse", command=self.browse_destination)
+        destination_browse_button.pack(side="right", padx=10, pady=5)
         self.destination_label.drop_target_register(DND_FILES)
         self.destination_label.dnd_bind('<<Drop>>', self.on_destination_drop)
 
-        # Exclude directories frame
-        exclude_frame = ttk.LabelFrame(top_frame, text="Exclude Directories")
-        exclude_frame.pack(pady=10, padx=10, fill="x")
-        self.exclude_text = tk.Text(exclude_frame, height=2, relief="solid", width=40)
-        self.exclude_text.pack(side="left", fill='x', expand=True, padx=10, pady=5)
-        self.exclude_browse_button = tk.Button(exclude_frame, text="Browse", command=self.browse_exclude)
-        self.exclude_browse_button.pack(side="right", padx=10, pady=5)
-        self.exclude_text.drop_target_register(DND_FILES)
-        self.exclude_text.dnd_bind('<<Drop>>', self.on_exclude_drop)
+        # Collapsible exclude frame setup
+        self.exclude_toggle_button = tk.Label(main_frame, text="▶ Exclude Directories", cursor="hand2", fg="blue")
+        self.exclude_toggle_button.pack(fill="x", pady=2)
+        self.exclude_toggle_button.bind("<Button-1>", self.toggle_exclude_frame)
+
+        self.exclude_frame = ttk.Frame(main_frame, relief="solid", borderwidth=1)
+        self.exclude_label = tk.Label(self.exclude_frame, text="Drag and Drop Exclude Directories Here:")
+        self.exclude_label.pack()
+        self.exclude_text = tk.Text(self.exclude_frame, height=2)
+        self.exclude_text.pack(fill="x", expand=True, padx=10, pady=5)
+        self.exclude_frame.pack_forget()  # Initially hide the exclude frame
+        self.exclude_frame.pack_propagate(False)  # Prevent the frame from shrinking to the size of its contents
+
+        
+
 
         # Options frame
-        options_frame = ttk.LabelFrame(top_frame, text="Options")
-        options_frame.pack(pady=10, padx=10, fill="x")
-
+        self.options_frame = ttk.LabelFrame(main_frame, text="Options")
+        self.options_frame.pack(pady=10, padx=10, fill="x")
+        self.exclude_frame.pack(fill="x", expand=True, padx=10, pady=5, before=self.options_frame)  # Ensure it expands and fills space
         # Multithread input
-        tk.Label(options_frame, text="Multithread (MT)").grid(row=0, column=0, padx=10, pady=5, sticky='w')
+        tk.Label(self.options_frame, text="Multithread (MT)").grid(row=0, column=0, padx=10, pady=5, sticky='w')
         self.mt_var = tk.IntVar(value=32)
-        tk.Spinbox(options_frame, from_=1, to_=128, textvariable=self.mt_var).grid(row=0, column=1, padx=10, pady=5, sticky='w')
+        tk.Spinbox(self.options_frame, from_=1, to_=128, textvariable=self.mt_var).grid(row=0, column=1, padx=10, pady=5, sticky='w')
 
         # Checkboxes for robocopy options
         self.v_var = tk.BooleanVar(value=True)
@@ -81,18 +82,18 @@ class BackupTool(TkinterDnD.Tk):
         self.r_var = tk.IntVar(value=5)
         self.w_var = tk.IntVar(value=3)
 
-        tk.Checkbutton(options_frame, text="Verbose (V)", variable=self.v_var).grid(row=1, column=0, padx=10, pady=5, sticky='w')
-        tk.Checkbutton(options_frame, text="Restartable (Z)", variable=self.z_var).grid(row=1, column=1, padx=10, pady=5, sticky='w')
-        tk.Checkbutton(options_frame, text="Sub-directories (E)", variable=self.e_var).grid(row=1, column=2, padx=10, pady=5, sticky='w')
+        tk.Checkbutton(self.options_frame, text="Verbose (V)", variable=self.v_var).grid(row=1, column=0, padx=10, pady=5, sticky='w')
+        tk.Checkbutton(self.options_frame, text="Restartable (Z)", variable=self.z_var).grid(row=1, column=1, padx=10, pady=5, sticky='w')
+        tk.Checkbutton(self.options_frame, text="Sub-directories (E)", variable=self.e_var).grid(row=1, column=2, padx=10, pady=5, sticky='w')
 
-        tk.Label(options_frame, text="Retries (R)").grid(row=2, column=0, padx=10, pady=5, sticky='w')
-        tk.Spinbox(options_frame, from_=0, to_=100, textvariable=self.r_var).grid(row=2, column=1, padx=10, pady=5, sticky='w')
+        tk.Label(self.options_frame, text="Retries (R)").grid(row=2, column=0, padx=10, pady=5, sticky='w')
+        tk.Spinbox(self.options_frame, from_=0, to_=100, textvariable=self.r_var).grid(row=2, column=1, padx=10, pady=5, sticky='w')
 
-        tk.Label(options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
-        tk.Spinbox(options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
+        tk.Label(self.options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
+        tk.Spinbox(self.options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
 
         # Buttons frame
-        buttons_frame = tk.Frame(top_frame)
+        buttons_frame = tk.Frame(main_frame)
         buttons_frame.pack(pady=20, padx=10, fill='x', expand=True)
 
         self.backup_button = tk.Button(buttons_frame, text="Start Backup", command=self.backup)
@@ -104,24 +105,18 @@ class BackupTool(TkinterDnD.Tk):
         self.export_log_button = tk.Button(buttons_frame, text="Export Log", command=self.export_log, state='disabled')
         self.export_log_button.pack(side="left", padx=10, fill='x', expand=True)
 
-        # Log frame
-        self.log_frame = ttk.LabelFrame(paned_window, text="Log")
-        self.log_frame.pack(pady=10, padx=10, fill="x")
-        paned_window.add(self.log_frame)
+        # Log frame at the bottom
+        log_frame = ttk.LabelFrame(main_frame, text="Log")
+        log_frame.pack(pady=10, padx=10, fill="both", expand=True)
 
-        self.log_text_frame = ttk.Frame(self.log_frame)
-        self.log_text_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        log_text_frame = ttk.Frame(log_frame)
+        log_text_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
-        y=Scrollbar(self.log_text_frame, orient='vertical')
+        y = ttk.Scrollbar(log_text_frame, orient='vertical')
+        log_text = tk.Text(log_text_frame, state='disabled', height=10, wrap='word', yscrollcommand=y.set)
+        log_text.pack(side="left", fill="both", expand=True)
+        y.config(command=log_text.yview)
         y.pack(side="right", fill='y')
-
-        self.log_text = tk.Text(self.log_text_frame, state='disabled', height=10, wrap='word', yscrollcommand=y.set)
-        self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
-
-        y.config(command=self.log_text.yview)
-
-        self.sizegrip = ttk.Sizegrip(self.log_frame)
-        self.sizegrip.pack(side="right", anchor="se")
 
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -130,7 +125,19 @@ class BackupTool(TkinterDnD.Tk):
         self.log_queue = queue.Queue()
         self.after(50, self.process_log_queue)
 
-        
+    def toggle_exclude_frame(self, event=None):
+        if self.exclude_frame.winfo_viewable():
+            self.exclude_frame.pack_forget()
+            self.exclude_toggle_button.config(text="▶ Exclude Directories")
+        else:
+            self.exclude_frame.pack(fill="x", expand=True, padx=10, pady=5, before=self.options_frame)
+            self.exclude_label.pack(fill='x')  # Repack the label to fill the frame horizontally
+            self.exclude_text.pack(fill='x', expand=True)  # Repack the text box to expand and fill
+            self.exclude_toggle_button.config(text="▼ Exclude Directories")
+
+
+
+
 
     def browse_source(self):
         path = filedialog.askdirectory()
@@ -164,6 +171,7 @@ class BackupTool(TkinterDnD.Tk):
         else:
             messagebox.showerror("Error", "Please drop a directory, not a file.")
 
+
     def on_destination_drop(self, event):
         path = event.data.strip('{}')
         if os.path.isdir(path):
@@ -171,6 +179,7 @@ class BackupTool(TkinterDnD.Tk):
             self.destination_label.config(text=self.destination_path)
         else:
             messagebox.showerror("Error", "Please drop a directory, not a file.")
+
 
     def on_exclude_drop(self, event):
         print("Dropped data:", event.data)  # Continue logging the raw data for verification
@@ -353,12 +362,16 @@ class BackupTool(TkinterDnD.Tk):
 
 
     def on_closing(self):
-        log_content = self.log_text.get('1.0', 'end').strip()
-        if log_content and not self.exported:
-            if messagebox.askyesno("Exit", "Are you sure you want to exit without exporting logs?"):
+        if hasattr(self, 'log_text'):
+            log_content = self.log_text.get('1.0', 'end').strip()
+            if log_content and not self.exported:
+                if messagebox.askyesno("Exit", "Are you sure you want to exit without exporting logs?"):
+                    self.destroy()
+            else:
                 self.destroy()
         else:
             self.destroy()
+
 
 
 
