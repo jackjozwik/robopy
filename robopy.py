@@ -58,12 +58,12 @@ class BackupTool(TkinterDnD.Tk):
         # Exclude directories frame
         exclude_frame = ttk.LabelFrame(top_frame, text="Exclude Directories")
         exclude_frame.pack(pady=10, padx=10, fill="x")
-        self.exclude_entry = tk.Entry(exclude_frame, textvariable=self.exclude_var, relief="solid", width=40)
-        self.exclude_entry.pack(side="left", fill='x', expand=True, padx=10, pady=5)
+        self.exclude_text = tk.Text(exclude_frame, height=2, relief="solid", width=40)
+        self.exclude_text.pack(side="left", fill='x', expand=True, padx=10, pady=5)
         self.exclude_browse_button = tk.Button(exclude_frame, text="Browse", command=self.browse_exclude)
         self.exclude_browse_button.pack(side="right", padx=10, pady=5)
-        self.exclude_entry.drop_target_register(DND_FILES)
-        self.exclude_entry.dnd_bind('<<Drop>>', self.on_exclude_drop)
+        self.exclude_text.drop_target_register(DND_FILES)
+        self.exclude_text.dnd_bind('<<Drop>>', self.on_exclude_drop)
 
         # Options frame
         options_frame = ttk.LabelFrame(top_frame, text="Options")
@@ -147,9 +147,14 @@ class BackupTool(TkinterDnD.Tk):
     def browse_exclude(self):
         directory = filedialog.askdirectory()
         if directory:
-            current_excludes = self.exclude_var.get().split(",") if self.exclude_var.get() else []
+            current_excludes = self.exclude_text.get("1.0", tk.END).strip()
+            if current_excludes:
+                current_excludes = current_excludes.split(",")
+            else:
+                current_excludes = []
             current_excludes.append(directory)
-            self.exclude_var.set(",".join(current_excludes))
+            self.exclude_text.delete("1.0", tk.END)  # Clear the current text
+            self.exclude_text.insert("1.0", ",".join(current_excludes))  # Insert the new list of directories
     
     def on_source_drop(self, event):
         path = event.data.strip('{}')
@@ -168,17 +173,33 @@ class BackupTool(TkinterDnD.Tk):
             messagebox.showerror("Error", "Please drop a directory, not a file.")
 
     def on_exclude_drop(self, event):
-        current_excludes = self.exclude_var.get().split(",") if self.exclude_var.get() else []
+        print("Dropped data:", event.data)  # Continue logging the raw data for verification
         new_excludes = self.parse_dropped_paths(event.data)
-        all_excludes = current_excludes + new_excludes
-        self.exclude_var.set(",".join(all_excludes))
-    
+        print("Parsed new excludes:", new_excludes)  # Verify parsed paths are correct
+
+        current_excludes = self.exclude_text.get("1.0", "end-1c").strip()
+        if current_excludes and new_excludes:
+            formatted_excludes = ", ".join([current_excludes] + new_excludes)
+        else:
+            formatted_excludes = ", ".join(new_excludes)
+
+        self.exclude_text.delete("1.0", "end")  # Clear the current text
+        self.exclude_text.insert("1.0", formatted_excludes)  # Insert the formatted list of directories
+
+
     def parse_dropped_paths(self, paths):
-        # Remove enclosing braces and split paths by the correct delimiter
-        paths = paths.strip("{}")
-        # Split paths by "} {" sequence to properly separate them
-        paths_list = paths.split("} {")
-        return [path.strip() for path in paths_list]
+        # Normalize the input by ensuring all path dividers are consistent
+        paths = paths.strip("{}").replace('}{', ',')
+        # Split on the comma, which should now correctly separate all paths
+        paths_list = [path.strip() for path in paths.split(',')]
+        # Additional handling for cases where paths might not have been split correctly
+        if len(paths_list) == 1:
+            # If only one path and it contains spaces potentially as separate paths, split further
+            # First, handle potential trailing spaces and single curly braces
+            single_path = paths_list[0].replace('} ', ', ').replace(' {', ', ')
+            # Now split if there are any commas introduced or spaces that imply separation
+            paths_list = [path.strip() for path in single_path.split(',') if path.strip()]
+        return paths_list
 
 
     def backup(self):
@@ -204,8 +225,8 @@ class BackupTool(TkinterDnD.Tk):
         r = self.r_var.get()
         w = self.w_var.get()
 
-        exclude_dirs = self.exclude_var.get().split(',')
-        exclude_params = ' '.join([f'/XD "{d.strip()}"' for d in exclude_dirs if d.strip()])
+        exclude_dirs = [path.strip().replace('/', '\\') for path in self.exclude_text.get("1.0", "end-1c").split(',') if path.strip()]
+        exclude_params = ' '.join([f'/XD "{d}"' for d in exclude_dirs])
 
         log_dir = tempfile.gettempdir()
         log_path = os.path.join(log_dir, 'robocopy_log.txt')
