@@ -24,6 +24,8 @@ class BackupTool(TkinterDnD.Tk):
 
         self.source_path = ""
         self.destination_path = ""
+        self.exclude_var = tk.StringVar(value="")
+
 
         # Create a PanedWindow
         paned_window = tk.PanedWindow(self, orient="vertical")
@@ -53,6 +55,16 @@ class BackupTool(TkinterDnD.Tk):
         self.destination_label.drop_target_register(DND_FILES)
         self.destination_label.dnd_bind('<<Drop>>', self.on_destination_drop)
 
+        # Exclude directories frame
+        exclude_frame = ttk.LabelFrame(top_frame, text="Exclude Directories")
+        exclude_frame.pack(pady=10, padx=10, fill="x")
+        self.exclude_entry = tk.Entry(exclude_frame, textvariable=self.exclude_var, relief="solid", width=40)
+        self.exclude_entry.pack(side="left", fill='x', expand=True, padx=10, pady=5)
+        self.exclude_browse_button = tk.Button(exclude_frame, text="Browse", command=self.browse_exclude)
+        self.exclude_browse_button.pack(side="right", padx=10, pady=5)
+        self.exclude_entry.drop_target_register(DND_FILES)
+        self.exclude_entry.dnd_bind('<<Drop>>', self.on_exclude_drop)
+
         # Options frame
         options_frame = ttk.LabelFrame(top_frame, text="Options")
         options_frame.pack(pady=10, padx=10, fill="x")
@@ -78,12 +90,6 @@ class BackupTool(TkinterDnD.Tk):
 
         tk.Label(options_frame, text="Wait (W)").grid(row=2, column=2, padx=10, pady=5, sticky='w')
         tk.Spinbox(options_frame, from_=0, to_=60, textvariable=self.w_var).grid(row=2, column=3, padx=10, pady=5, sticky='w')
-
-        # Exclude directories
-        tk.Label(options_frame, text="Exclude Directories").grid(row=3, column=0, padx=10, pady=5, sticky='w')
-        self.exclude_var = tk.StringVar(value="")
-        self.exclude_entry = tk.Entry(options_frame, textvariable=self.exclude_var, width=40)
-        self.exclude_entry.grid(row=3, column=1, columnspan=3, padx=10, pady=5, sticky='w')
 
         # Buttons frame
         buttons_frame = tk.Frame(top_frame)
@@ -138,6 +144,12 @@ class BackupTool(TkinterDnD.Tk):
             self.destination_path = path
             self.destination_label.config(text=self.destination_path)
 
+    def browse_exclude(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            current_excludes = self.exclude_var.get().split(",") if self.exclude_var.get() else []
+            current_excludes.append(directory)
+            self.exclude_var.set(",".join(current_excludes))
     
     def on_source_drop(self, event):
         path = event.data.strip('{}')
@@ -154,6 +166,19 @@ class BackupTool(TkinterDnD.Tk):
             self.destination_label.config(text=self.destination_path)
         else:
             messagebox.showerror("Error", "Please drop a directory, not a file.")
+
+    def on_exclude_drop(self, event):
+        current_excludes = self.exclude_var.get().split(",") if self.exclude_var.get() else []
+        new_excludes = self.parse_dropped_paths(event.data)
+        all_excludes = current_excludes + new_excludes
+        self.exclude_var.set(",".join(all_excludes))
+    
+    def parse_dropped_paths(self, paths):
+        # Remove enclosing braces and split paths by the correct delimiter
+        paths = paths.strip("{}")
+        # Split paths by "} {" sequence to properly separate them
+        paths_list = paths.split("} {")
+        return [path.strip() for path in paths_list]
 
 
     def backup(self):
